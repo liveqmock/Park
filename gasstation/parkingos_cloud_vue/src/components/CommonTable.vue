@@ -1,0 +1,1381 @@
+<template>
+    <section>
+        <!--工具条-->
+        <el-row style="margin-bottom:8px" v-if="!hideTool">
+            <el-col :span="24" align="left">
+                <el-col :span="21" align="left">
+
+                    <div v-if="showRefillInfo" style="display:inline;margin-right:100px;float: left">
+                        <el-input v-model="shouldpay" style="width:200px;background:white;" disabled>
+                            <template slot="prepend">应收</template>
+                        </el-input>
+                        <el-input v-model="actualpay" style="width:200px;background:white;" disabled>
+                            <template slot="prepend">实收</template>
+                        </el-input>
+                    </div>
+
+                    <div v-if="showParkInfo" style="display:inline;margin-right:50px;float: left">
+                        <el-input v-model="parkspace_park" style="width:150px;background:white;margin-right: 0.5px;"
+                                  disabled>
+                            <template slot="prepend">场内停车</template>
+                        </el-input>
+                        <el-input v-model="parkspace_park" style="width:150px;background:white;" disabled>
+                            <template slot="prepend">临停车</template>
+                        </el-input>
+                        <el-input v-model="parkspace_blank" style="width:150px;background:white;" disabled>
+                            <template slot="prepend">空车位</template>
+                        </el-input>
+                    </div>
+                    <div v-if="showBusinessOrder" style="display:inline;margin-right:100px;float: left">
+                        <el-input v-model="sumtotal" style="width:200px;background:white;" disabled>
+                            <template slot="prepend">订单总金额</template>
+                        </el-input>
+                        <el-input v-model="cashpay" style="width:200px;background:white;" disabled>
+                            <template slot="prepend">现金支付</template>
+                        </el-input>
+                        <el-input v-model="elepay" style="width:200px;background:white;" disabled>
+                            <template slot="prepend">手机支付</template>
+                        </el-input>
+                    </div>
+                    <div v-if="showCollectorSelector" style="float: left;margin-right: 10px;">
+                        <el-select v-model="currentcollect" placeholder="请选择收费员" @change="changeanalysisdatecollect"
+                                   style="float: left;margin-right: 30px;">
+                            <el-option
+                                    v-for="item in collectors"
+                                    :key="item.value_no"
+                                    :label="item.value_name"
+                                    :value="item.value_no">
+                            </el-option>
+                        </el-select>
+                    </div>
+                    <div v-if="showParkSelector" style="float: left;margin-right: 10px;">
+                        <el-select v-model="currentpark" placeholder="全部车场" @change="changeanalysisdatepark"
+                                   style="float: left;margin-right: 30px;">
+                            <el-option
+                                    v-for="item in parks"
+                                    :key="item.value_no"
+                                    :label="item.value_name"
+                                    :value="item.value_no">
+                            </el-option>
+                        </el-select>
+                    </div>
+                    <div v-if="showdateSelector" style="float: left;margin-right: 10px;">
+
+                        <span class="demonstration">日期</span>
+                        <el-date-picker
+                                v-model="datesselector"
+                                type="datetimerange"
+                                align="right"
+                                unlink-panels
+                                range-separator="至"
+                                :start-placeholder="start_placeholder"
+                                :end-placeholder="end_placeholder"
+                                value-format="yyyy-MM-dd HH:mm:ss"
+                                :picker-options="pickerOptions2"
+                                @change="changeanalysisdate"
+                                :default-time="['00:00:00', '23:59:59']">
+                        </el-date-picker>
+                    </div>
+
+                    <div v-if="showdateSelectorMonth" style="float: left;margin-right: 10px;">
+                        <!--<div style="float: left;margin-right: 10px;">-->
+                        <el-date-picker
+                                v-model="monthReportStart"
+                                type="month"
+                                value-format="yyyy-MM"
+                                :picker-options="pickerOptionsBefore"
+                                :placeholder="start_month_placeholder">
+                        </el-date-picker>
+                        <span> 至 </span>
+                        <el-date-picker
+                                v-model="monthReportEnd"
+                                type="month"
+                                value-format="yyyy-MM"
+                                :picker-options="pickerOptionsAfter"
+                                :placeholder="start_month_placeholder">
+                        </el-date-picker>
+                        <el-tooltip class="item" effect="dark" content="最多支持12个月的数据查询" placement="bottom">
+                            <el-button type="primary" @click="handleSearchMonthReport"  align="center">查询
+                            </el-button>
+                        </el-tooltip>
+                    </div>
+
+                    <el-button type="primary"  @click="handleCustomizeAdd" v-if="showCustomizeAdd">
+                        {{addtitle}}
+                    </el-button>
+
+                    <el-button type="primary"  @click="handleSearch" v-if="!hideSearch" icon="search">高级查询
+                    </el-button>
+                    <el-button type="primary"  @click="handleUpload" v-if="showUploadMonthCard"
+                               icon="search">导入月卡
+                    </el-button>
+                    <el-tooltip class="item" effect="dark" content="导出内容为当前查询条件下所有数据" placement="bottom">
+                        <el-button type="primary"  @click="handleExport" v-if="!hideExport">导出
+                        </el-button>
+                    </el-tooltip>
+                    <el-button type="primary"  @click="handleAdd" v-if="!hideAdd">{{addtitle}}</el-button>
+                    <!--<el-button type="primary" size="small" @click="handlePrint()">打印</el-button>-->
+
+                </el-col>
+
+                <el-col :span="3" align="right" style="float: right">
+                    <!--<span style="color:red;font-size:8px">提示:刷新后会重置高级查询</span>-->
+                    <!--<el-button @click="reset" type="primary" size="small">清空高级查询</el-button>-->
+                    <el-button @click="refresh" type="text" >刷新&nbsp;&nbsp;</el-button>
+                </el-col>
+            </el-col>
+
+        </el-row>
+        <!--列表-->
+        <el-table :data="table" border highlight-current-row style="width:100%;"
+                  :height="tableheight2"
+                  v-loading="loading" @sort-change="sortChange" id="tablearea">
+
+            <el-table-column label="操作" :width="btswidth" v-if="!hideOptions" align="center" fixed="left">
+                <template scope="scope">
+                    <el-button v-if="showEdit" size="small" type="text" @click="handleEdit(scope.$index, scope.row)">
+                        编辑
+                    </el-button>
+                    <el-button v-if="showCustomizeEdit"  type="text" size="small"
+                               @click="handleCustomizeEdit(scope.$index, scope.row)">
+                        编辑
+                    </el-button>
+                    <el-button v-if="showModifyCarNumber"  type="text" size="small"
+                               @click="handleModifyCarNumber(scope.$index, scope.row)">修改车牌
+                    </el-button>
+                    <el-button v-if="showsetting"  type="text" size="small"
+                               @click="handlesetting(scope.$index, scope.row)">设置
+                    </el-button>
+                    <el-button v-if="showqrurl"  size="small" type="text" @click="handleqrurl(scope.$index, scope.row)">
+                        生成车场二维码
+                    </el-button>
+                    <el-button v-if="showdelete" size="small" type="text" @click="openDelete(scope.$index, scope.row)">
+                        <span style="color:red">删除</span></el-button>
+                    <el-button v-if="showmapdialog" size="small" type="text"
+                               @click="handlemap(scope.$index, scope.row)">车场定位
+                    </el-button>
+                    <el-button v-if="showresetpwd" size="small" type="text"
+                               @click="handleresetpwd(scope.$index, scope.row)">重置密码
+                    </el-button>
+                    <el-button v-if="showmRefill" size="small" type="text"
+                               @click="handleRefill(scope.$index, scope.row)">续费
+                    </el-button>
+                    <el-button v-if="showPermission" size="small" type="text"
+                               @click="handlePermission(scope.$index, scope.row)">编辑权限
+                    </el-button>
+                    <el-button v-if="showSettingFee" size="small" type="text"
+                               @click="handleRefill(scope.$index, scope.row)">收费设置
+                    </el-button>
+                    <el-button v-if="showCommutime" size="small" type="text"
+                               @click="handleRefill(scope.$index, scope.row)">上班时间
+                    </el-button>
+
+                    <!--
+                    <el-button
+                        v-for="bt in bts"
+                        v-on:click="bt.func"
+                    >{{bt.name}}</el-button>
+                    -->
+                </template>
+            </el-table-column>
+
+            <el-table-column
+                    align="center"
+                    type="index"
+                    width="83"
+                    label="索引"
+                    fixed="left">
+            </el-table-column>
+
+            <div v-for="items in tableitems">
+                <div v-if="items.hasSubs">
+                    <el-table-column
+                            :label="items.label"
+                            header-align="center">
+                        <el-table-column
+                                v-for="tableitem in items.subs"
+                                v-if="!tableitem.hidden"
+                                :prop="tableitem.prop"
+                                :label="tableitem.label"
+                                header-align="center"
+                                :align="tableitem.align"
+                                :sortable="!tableitem.unsortable"
+                                :width="tableitem.width"
+                                :formatter="tableitem.format"
+                        >
+                        </el-table-column>
+                    </el-table-column>
+                </div>
+                <div v-if="!items.hasSubs">
+                    <el-table-column
+                            v-for="tableitem in items.subs"
+                            v-if="!tableitem.hidden"
+                            :prop="tableitem.prop"
+                            :label="tableitem.label"
+                            header-align="center"
+                            :align="tableitem.align"
+                            :sortable="!tableitem.unsortable"
+                            :width="tableitem.width"
+                            :formatter="tableitem.format"
+                    >
+                    </el-table-column>
+                </div>
+            </div>
+
+            <el-table-column label="操作" :width="btswidth" v-if="showImg" align="center">
+                <!--<el-button @click.native="showDetail(row)">查看详情</el-button>-->
+                <template scope="scope">
+                    <!--<span class="link-type" @click="handleShowImg(scope.$index, scope.row)" v-if="showImg">123</span>-->
+                    <el-button size="small" type="text" style="color: #109EFF;"
+                               @click="handleShowImg(scope.$index, scope.row)">
+                        查看图片
+                    </el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <!--工具条-->
+        <el-col :span="24" v-if="!hidePagination" align="bottom" style="margin-top:5px;margin-bottom:5px">
+            <el-col :span="24" align="right">
+                <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
+                               :current-page="currentPage" :page-sizes="[20, 40, 80]" :page-size="pageSize"
+                               layout="total, sizes, prev, pager, next, jumper" :total="total"></el-pagination>
+            </el-col>
+        </el-col>
+
+        <!--高级查询-->
+        <complex-search
+                :searchVisible="searchFormVisible"
+                :title="searchtitle"
+                :searchitems="tableitems"
+                v-on:searchdialog="closesearch"
+                v-on:search="onSearch"
+                ref="search">
+        </complex-search>
+
+        <!--表格编辑-->
+        <edit-form
+                :editVisible="editFormVisible"
+                :edititems="tableitems"
+                :editloading="editloading"
+                :editFormRules="editFormRules"
+                :rowdata="rowdata"
+                :dialogsize="dialogsize"
+                v-on:editdialog="closeedit"
+                v-on:edit="onEdit"
+                :ref="ef">
+        </edit-form>
+
+        <!--表格添加-->
+        <add-form
+                :addtitle="addtitle"
+                :addVisible="addFormVisible"
+                :addloading="addloading"
+                :additems="tableitems"
+                :addFormRules="typeof(addFormRules)=='undefined'?editFormRules:addFormRules"
+                :dialogsize="dialogsize"
+                v-on:adddialog="closeadd"
+                v-on:add="onAdd"
+                :ref="af">
+        </add-form>
+
+        <!--删除提示框-->
+        <el-dialog
+                title="提示"
+                :visible.sync="delVisible"
+                width="30%"
+                custom-class="deleteTip">
+            <div class="el-message-box__status el-icon-warning" style="padding-bottom: 10px;"></div>
+            <div style="margin-left:50px;vertical-align:middle;">确定删除吗?此操作不可恢复!</div>
+            <span slot="footer" class="dialog-footer">
+				<el-button @click="delVisible = false" size="small">取 消</el-button>
+				<el-button type="primary" @click="handledelete" size="small">确 定</el-button>
+			</span>
+        </el-dialog>
+
+        <!--地图-->
+        <input v-show="false" v-model.number="center.lng">
+        <input v-show="false" v-model.number="center.lat">
+
+        <el-dialog :visible.sync="mapVisible" @close="dclose" top="10%">
+            <div>
+                <baidu-map v-if="showMap" :style="mapstyle" :center="center" :zoom="16" @click="clickmap"
+                           @dblclick="makePoint" :scroll-wheel-zoom="true" :double-click-zoom="false">
+
+                    <bm-marker v-if="showMarker" :position="marker" animation="BMAP_ANIMATION_DROP" :label="label"
+                               :dragging="true" @mouseup="mouseup"></bm-marker>
+                    <!--<bm-local-search :keyword="keyword" :auto-viewport="true" :selectFirstResult="true" :pageCapacity="ps" :resultPanel="false" location="北京"></bm-local-search>-->
+                </baidu-map>
+            </div>
+            <el-col :span="24" style="margin-bottom: 10px;margin-top:10px">
+                <el-col :span="16">
+                    <el-input
+                            placeholder="请输入关键字"
+                            v-model="keyword"
+                            style="width:150px;"
+                            size="small">
+                    </el-input>
+                    <el-button type="primary" icon="search" size="small" @click="sclick"></el-button>
+                </el-col>
+                <el-col :span="8" align="right">
+                    <el-button @click="mapVisible = false" size="small">取 消</el-button>
+                    <el-button type="primary" @click="modifyPosition" size="small" :loading="maploading">保存</el-button>
+                </el-col>
+            </el-col>
+        </el-dialog>
+
+        <!--重置密码-->
+        <el-dialog
+                title="重置密码"
+                :visible.sync="resetPwdVisible"
+                width="30%">
+            <el-form ref="form" label-width="120px" style="margin-bottom:-30px">
+                <el-form-item label="请输入新密码">
+                    <el-input v-model="pwd1" style="width:90%"></el-input>
+                </el-form-item>
+                <el-form-item label="再次输入密码">
+                    <el-input v-model="pwd2" style="width:90%"></el-input>
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+				<el-button @click="resetPwdVisible = false" size="small">取 消</el-button>
+				<el-button type="primary" size="small" @click="resetPwd" :loading="resetloading">确 定</el-button>
+			</span>
+        </el-dialog>
+    </section>
+</template>
+
+<script>
+    import {path} from '../api/api';
+    import common from '../common/js/common';
+    import ComplexSearch from './ComplexSearch';
+    import EditForm from './EditForm';
+    import AddForm from './AddForm';
+    import Printd from 'printd';
+
+    export default {
+        components: {
+            ComplexSearch, EditForm, AddForm
+        },
+        data() {
+            let that = this;
+            return {
+                ef: 'editref',
+                af: 'addref',
+                searchFormVisible: false,
+                editFormVisible: false,
+                addFormVisible: false,
+                mapVisible: false,
+                delVisible: false,
+                currentPage: 1,
+                pageSize: 20,
+                total: 0,
+                orderby: 'desc',
+                orderfield: 'id',
+                table: [],
+                loading: false,
+                resetloading: false,
+                editloading: false,
+                addloading: false,
+                showMarker: false,
+                //showMap:false,
+                maploading: false,
+                centralpaymentlist: '',
+                searchForm: {},
+                tempSearchForm: {},
+                collectors: [],
+                currentcollect: '',
+                currentpark: '',
+                sform: {},
+                rowdata: {},
+
+
+                center: {
+                    lat: 0,
+                    lng: 0
+                },
+                marker: {
+                    lat: 0,
+                    lng: 0
+                },
+                mapstyle: '',
+                mapheight: '',
+                mapwidth: '',
+                rowid: 0,
+                ps: 1,
+                keyword: '',
+                cityName: '',
+                shouldpay: '0.00 元',
+                actualpay: '0.00 元',
+                parkspace_blank: '0辆',
+                parkspace_park: '0辆',
+                cashpay: '0.00 元',
+                elepay: '0.00 元',
+                sumtotal: '0.00 元',
+                label: {content: 'Marker Label', opts: {offset: {width: 20, height: -10}}},
+                centralpayment: -3,
+                todayTotal: '',
+                balance: '',
+                analysisdate: '',
+                datesselector: '',
+                monthReportStart: '',
+                monthReportEnd: '',
+
+                pickerOptionsBefore: {
+                     disabledDate(time) {
+                       return time.getTime() > Date.now() - 8.64e7;
+                     }
+                },
+                pickerOptionsAfter: {
+                     disabledDate(time) {
+                        var date1 = new Date(that.monthReportStart);
+                        var date2 = new Date(date1);
+                       return time.getTime() > Date.now() - 8.64e7 || time.getTime() < date2.getTime();
+                     }
+                },
+
+                searchDate: '',
+                analysisdateopt: {
+                    disabledDate(time) {
+                        return time.getTime() > Date.now();
+                    }
+                },
+                start_placeholder: '',
+                end_placeholder: '',
+                start_month_placeholder: '',
+
+                pickerOptions2: {
+                    shortcuts: [
+                        {
+                            text: '今天',
+                            onClick(picker) {
+                                const end = new Date();
+                                const start = new Date();
+                                start.setHours(0);
+                                start.setMinutes(0);
+                                start.setSeconds(0);
+                                end.setHours(23);
+                                end.setMinutes(59);
+                                end.setSeconds(59);
+                                //start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+                                picker.$emit('pick', [start, end]);
+                                this.sform.page = 1;
+                            }
+                        },
+                        {
+                            text: '最近一周',
+                            onClick(picker) {
+                                const end = new Date();
+                                const start = new Date();
+                                start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+                                start.setHours(0);
+                                start.setMinutes(0);
+                                start.setSeconds(0);
+                                end.setHours(23);
+                                end.setMinutes(59);
+                                end.setSeconds(59);
+                                picker.$emit('pick', [start, end]);
+                            }
+                        }, {
+                            text: '最近一个月',
+                            onClick(picker) {
+                                const end = new Date();
+                                const start = new Date();
+                                start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
+                                start.setHours(0);
+                                start.setMinutes(0);
+                                start.setSeconds(0);
+                                end.setHours(23);
+                                end.setMinutes(59);
+                                end.setSeconds(59);
+                                picker.$emit('pick', [start, end]);
+                            }
+                        }, {
+                            text: '最近三个月',
+                            onClick(picker) {
+                                const end = new Date();
+                                const start = new Date();
+                                start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
+                                start.setHours(0);
+                                start.setMinutes(0);
+                                start.setSeconds(0);
+                                end.setHours(23);
+                                end.setMinutes(59);
+                                end.setSeconds(59);
+                                picker.$emit('pick', [start, end]);
+                            }
+                        }]
+                },
+                resetPwdVisible: false,
+                // imgDialog: false,
+                // imgdialog_url: '',
+                pwd1: '',
+                pwd2: '',
+                currentdate: '',
+                tableheight2: common.gwh() - 143,
+                parks: ''
+            };
+        },
+        props: ['tableitems', 'fieldsstr', 'hideOptions', 'hideExport', 'hideAdd', 'showCustomizeAdd', 'showCustomizeEdit', 'hideSearch', 'showLeftTitle', 'leftTitle', 'editFormRules', 'addFormRules',
+            'tableheight', 'bts', 'btswidth', 'queryapi', 'queryparams', 'exportapi', 'editapi', 'addapi', 'resetapi', 'delapi', 'searchtitle', 'addtitle', 'addfailmsg',
+            'dialogsize', 'showqrurl', 'showdelete', 'showmapdialog', 'showMap', 'showsetting', 'hidePagination', 'showRefillInfo', 'showParkInfo', 'showBusinessOrder', 'hideTool', 'showanalysisdate', 'showresetpwd', 'showdateSelector', 'showCollectorSelector', 'showParkSelector', 'showdateSelectorMonth',
+            'showModifyCarNumber', 'showmRefill', 'showEdit', 'showImg', 'showCommutime', 'showSettingFee', 'showPermission', 'imgapi', 'showUploadMonthCard'],
+        methods: {
+            //刷新页面
+            refresh() {
+                if (this.showdateSelector) {
+                    //this.$extend(this.sform,{'date':this.datesselector})
+                    this.sform.date = this.searchDate;
+                    if (this.sform.date == '') {
+                        this.sform.date = common.currentFormatDate();
+                    }
+                    this.sform.out_uid = this.currentcollect;
+                    this.sform.comid_start = this.currentpark;
+                    this.getTableData(this.sform);
+                } else {
+                    this.getTableData(this.sform);
+                }
+                //清空高级查询表单项内容
+                this.$message({
+                    message: '刷新成功!',
+                    type: 'success',
+                    duration: 600
+                });
+            },
+            //重置高级查询
+            reset() {
+                console.log('reset');
+                this.getTableData({});
+                //清空高级查询表单项内容
+                this.$refs['search'].resetSearch();
+                this.sform = common.clone(this.tempSearchForm);
+                this.$message({
+                    message: '清空成功!',
+                    type: 'success',
+                    duration: 600
+                });
+            },
+            //分页变动
+            handleSizeChange(val) {
+                this.pageSize = val;
+                // console.log('size change');
+                this.getTableData(this.sform);
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val;
+                // console.log('page change');
+                this.sform.date = this.searchDate;
+                this.getTableData(this.sform);
+            },
+            //排序变动
+            sortChange(val) {
+                if (val.order != null && val.order.substring(0, 1) == 'a') {
+                    this.orderby = 'asc';
+                } else {
+                    this.orderby = 'desc';
+                }
+                this.orderfield = val.prop;
+                console.log('sort change');
+                this.getTableData(this.sform);
+            },
+            handleSearchMonthReport() {
+                this.sform.btime = this.monthReportStart;
+                this.sform.etime = this.monthReportEnd;
+                this.currentPage = 1;
+                this.getTableData(this.sform);
+            },
+
+            //拉取表格数据
+            getTableData(sform) {
+                let vm = this;
+                this.loading = true;
+                let api = this.queryapi;
+
+                sform.rp = this.pageSize;
+                sform.page = this.currentPage;
+                sform.orderby = this.orderby;
+                sform.orderfield = this.orderfield;
+                sform.fieldsstr = this.fieldsstr;
+
+                sform = common.generateForm(sform);
+
+                vm.$axios.post(path + api, vm.$qs.stringify(sform), {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    }
+                }).then(function (response) {
+                    // console.log(ret)
+                    let ret = response.data;
+                    if (ret.validate != 'undefined' && ret.validate == '0') {
+                        vm.loading = false;
+                        //未携带令牌.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('未携带令牌,请重新登录!');
+                        }, 150);
+                    } else if (ret.validate != 'undefined' && ret.validate == '1') {
+                        vm.loading = false;
+                        //过期.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录过期,请重新登录!');
+                        }, 150);
+                    } else if (ret.validate != 'undefined' && ret.validate == '2') {
+                        vm.loading = false;
+                        //令牌无效.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录异常,请重新登录!');
+                        }, 150);
+                    } else {
+                        console.log(ret);
+                        if (ret.total == 0) {
+                            vm.table = [];
+                        } else {
+                            vm.table = ret.rows;
+                        }
+                        if (ret.actReceivable != undefined) {
+                            //月卡续费记录实收
+                            vm.actualpay = ret.actReceivable + '元';
+                        }
+                        if (ret.amountReceivable != undefined) {
+                            //月卡续费记录应收
+                            vm.shouldpay = ret.amountReceivable + '元';
+                        }
+                        if (ret.blank != undefined) {
+                            //订单记录 车位统计-空车位
+                            vm.parkspace_blank = ret.blank;
+                        }
+                        if (ret.parktotal != undefined) {
+                            //订单记录 车位统计-场内停车
+                            vm.parkspace_park = ret.parktotal;
+                        }
+                        if (ret.cashpay != undefined) {
+                            //集团 业务订单-订单记录-现金支付
+                            vm.cashpay = ret.cashpay + '元';
+                        }
+                        if (ret.elepay != undefined) {
+                            //集团 业务订单-订单记录-手机支付
+                            vm.elepay = ret.elepay + '元';
+                        }
+                        if (ret.sumtotal != undefined) {
+                            //集团 业务订单-订单记录-订单总金额
+                            vm.sumtotal = ret.sumtotal + '元';
+                        }
+
+                        vm.total = ret.total;
+                        vm.loading = false;
+                    }
+                }).catch(function (error) {
+                    setTimeout(() => {
+                        vm.alertInfo('请求失败!' + error);
+                    }, 150);
+                });
+
+            },
+
+            //高级查询
+            handleSearch() {
+                //弹出高级查询界面
+                //全平台服务商
+                let vm = this;
+                let user = sessionStorage.getItem('user');
+                // console.log('-----------------------')
+                user = JSON.parse(user);
+                for (let i = 0; i < this.tableitems.length; i++) {
+                    // console.log('>>'+this.tableitems[i].customSelect)
+
+                    if (this.tableitems[i].customSelect == 'parkserver') {
+                        //重置该selectlist,根据
+                        var params;
+                        if (user.roleid == 1) {
+                            if (this.tableitems[i].searchSelect == 'all') {
+                                params = {'query': 1, 'token': sessionStorage.getItem('token')};
+                            }
+                        } else if (user.roleid == 2) {
+                            if (this.tableitems[i].searchSelect == 'local_all') {
+                                params = {'token': sessionStorage.getItem('token')};
+                            } else if (this.tableitems[i].searchSelect == 'all') {
+                                params = {'query': 1, 'token': sessionStorage.getItem('token')};
+                            }
+                        }
+                        // this.$ajax({
+                        //     url: path + '/getdata/serverlist',
+                        //     data: params,
+                        //     async: false,
+                        //     success: function (ret) {
+                        //         vm.tableitems[i].selectlist = ret
+                        //     }
+                        // })
+                        vm.$axios.post(path + '/getdata/serverlist', vm.$qs.stringify(params), {
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            }
+                        }).then(function (response) {
+                            let ret = response.data;
+                            vm.tableitems[i].selectlist = ret;
+                        }).catch(function (error) {
+                            setTimeout(() => {
+                                vm.alertInfo('请求失败!' + error);
+                            }, 150);
+                        });
+                    } else if (this.tableitems[i].customSelect == 'park') {
+                        var params;
+                        if (user.roleid == 1) {
+                        } else if (user.roleid == 2) {
+                            if (this.tableitems[i].searchSelect == 'local_all') {
+                                params = {'token': sessionStorage.getItem('token')};
+                            } else if (this.tableitems[i].searchSelect == 'all') {
+                                params = {'query': 1, 'token': sessionStorage.getItem('token')};
+                            }
+                        } else if (user.roleid == 3) {
+                            if (this.tableitems[i].searchSelect == 'local_all') {
+                                params = {'token': sessionStorage.getItem('token')};
+                            }
+                        }
+                        // this.$ajax({
+                        //     url: path + '/getdata/parklist',
+                        //     data: params,
+                        //     async: false,
+                        //     success: function (ret) {
+                        //         vm.tableitems[i].selectlist = ret
+                        //     }
+                        // })
+                        // console.log('-----------------------')
+                        vm.$axios.post(path + '/getdata/parklist', vm.$qs.stringify(params), {
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            }
+                        }).then(function (response) {
+                            let ret = response.data;
+                            vm.tableitems[i].selectlist = ret;
+                        }).catch(function (error) {
+                            setTimeout(() => {
+                                vm.alertInfo('请求失败!' + error);
+                            }, 150);
+                        });
+                    }
+                }
+                this.searchFormVisible = true;
+            },
+            closesearch: function (val) {
+                this.searchFormVisible = val;
+            },
+            onSearch: function (sform) {
+                //在这里得到表单项,提交查询
+                this.sform = sform;
+                this.getTableData(sform);
+            },
+            //表格编辑
+            handleEdit(index, row) {
+                //拿到当前行数据row,传递给表单编辑子组件,子组建中包括重置和保存按钮
+                this.rowdata = row;
+                //获取角色编号,获取rowid,
+                this.editFormVisible = true;
+            },
+            //
+            handleqrurl(index, row) {
+                //调用父组件的方法,传row
+                this.$emit('qrurl', row.park_id);
+            },
+            //单击设置触发
+            handlesetting(index, row) {
+                //调用父组件的方法,传row
+                this.$emit('showSetting', row);
+            },
+            handleUpload() {
+                this.$emit('showUpload');
+            },
+            //导出表格数据
+            handleExport() {
+                let vm = this;
+                let api = this.exportapi;
+                let params = '';
+                if (common.getLength(this.sform) == 0) {
+                    params = 'fieldsstr=' + this.fieldsstr + '&token=' + sessionStorage.getItem('token');
+                } else {
+                    for (var x in this.sform) {
+                        //console.log(this.sform[x])
+                        params += x + '=' + this.sform[x] + '&';
+                    }
+                }
+                let groupid = sessionStorage.getItem('groupid');
+                let cityid = sessionStorage.getItem('cityid');
+                if (groupid != 'undefined' && !(params.indexOf('groupid=') > -1)) {
+                    params += '&groupid=' + groupid;
+                }
+                if (cityid != 'undefined' && !(params.indexOf('cityid=') > -1)) {
+                    params += '&cityid=' + cityid;
+                }
+                // params += '&groupid=' + groupid + '&cityid=' + cityid
+                if (params.indexOf('comid=') > -1) {
+                    window.open(path + api + '?' + params);
+                } else {
+                    window.open(path + api + '?' + params + '&comid=' + sessionStorage.getItem('comid'));
+                }
+
+            },
+            closeedit: function (val) {
+                this.editFormVisible = val;
+                this.editloading = val;
+            },
+            onEdit: function (eform) {
+                //发送ajax,提交表单更新
+                let vm = this;
+                let api = this.editapi;
+                eform = common.generateForm(eform);
+                this.$refs.editref.$refs.editForm.validate((valid) => {
+                    if (valid) {
+                        vm.editloading = true;
+                        vm.$axios.post(path + api, vm.$qs.stringify(eform), {
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            }
+                        }).then(function (response) {
+                            let ret = response.data;
+                            if (ret.validate != 'undefined' && ret.validate == '1') {
+                                //过期.重新登录
+                                setTimeout(() => {
+                                    vm.alertInfo('登录过期,请重新登录!');
+                                }, 100);
+                            } else if (ret.validate != 'undefined' && ret.validate == '2') {
+                                //令牌无效.重新登录
+                                setTimeout(() => {
+                                    vm.alertInfo('登录异常,请重新登录!');
+                                }, 100);
+                            } else {
+                                if (ret > 0 || ret.state == 1) {
+                                    //更新成功
+                                    vm.getTableData(vm.sform);
+                                    vm.$message({
+                                        message: '更新成功!',
+                                        type: 'success',
+                                        duration: 600
+                                    });
+                                    vm.editFormVisible = false;
+                                } else {
+                                    //更新失败
+                                    vm.$message({
+                                        message: '更新失败!' + ret.msg,
+                                        type: 'error',
+                                        duration: 600
+                                    });
+                                }
+                                setTimeout('vm.editloading=false', 5000);
+                            }
+                        }).catch(function (error) {
+                            setTimeout(() => {
+                                vm.alertInfo('请求失败!' + error);
+                            }, 150);
+                        });
+                    }
+                });
+            },
+            handleCustomizeAdd() {
+                this.$emit('customizeadd');
+            },
+            handlePrint(elem) {
+                // var mywindow = window.open('', 'PRINT', 'height=800,width=1200');
+                //
+                // // mywindow.document.write('<html><head><title>' + document.title  + '</title>');
+                // // mywindow.document.write('</head><body >');
+                // // mywindow.document.write('<h1>' + document.title  + '</h1>');
+                // // mywindow.document.write(document.getElementById(elem).innerHTML);
+                // // mywindow.document.write('</body></html>');
+                //
+                // mywindow.document.write(this.$el.innerHTML);
+                //
+                // mywindow.document.close(); // necessary for IE >= 10
+                // mywindow.focus(); // necessary for IE >= 10*/
+                //
+                // mywindow.print();
+                // mywindow.close();
+
+
+                // let subOutputRankPrint = document.getElementById('tablearea');
+                // console.log(subOutputRankPrint.innerHTML);
+                // let newContent =subOutputRankPrint.innerHTML;
+                // let oldContent = document.body.innerHTML;
+                // document.body.innerHTML = newContent;
+                // window.print();
+                // window.location.reload();
+                // document.body.innerHTML = oldContent;
+                // return false;
+
+                const cssText = 'tablearea {font-size: 85%;font-family: sans-serif;border-spacing: 0;border-collapse: collapse;}';
+                const d = new Printd();
+
+                // opens the "print dialog" of your browser to print the element
+                d.print(document.getElementById('tablearea'), cssText);
+            },
+            handleAdd() {
+                this.addFormVisible = true;
+            },
+            closeadd(val) {
+                this.addFormVisible = val;
+                this.addLoading = val;
+            },
+            onAdd(aform) {
+                console.log(aform);
+                //发送请求,添加一条记录
+                let vm = this;
+                let api = this.addapi;
+                let msg = this.addfailmsg;
+                aform = common.generateForm(aform);
+                this.$refs.addref.$refs.addForm.validate((valid) => {
+                    if (valid) {
+                        vm.addloading = true;
+
+                        vm.$axios.post(path + api, vm.$qs.stringify(aform), {
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            }
+                        }).then(function (response) {
+                            let ret = response.data;
+                            if (ret.validate != 'undefined' && ret.validate == '1') {
+                                //过期.重新登录
+                                setTimeout(() => {
+                                    vm.alertInfo('登录过期,请重新登录!');
+                                }, 100);
+                            } else if (ret.validate != 'undefined' && ret.validate == '2') {
+                                //令牌无效.重新登录
+                                setTimeout(() => {
+                                    vm.alertInfo('登录异常,请重新登录!');
+                                }, 100);
+                            } else {
+                                if (ret > 0 || ret.state == 1) {
+                                    //更新成功
+                                    vm.getTableData(vm.sform);
+                                    vm.$message({
+                                        message: '添加成功!',
+                                        type: 'success',
+                                        duration: 600
+                                    });
+                                    vm.addFormVisible = false;
+                                    vm.addloading = false;
+                                } else {
+                                    //更新失败
+                                    vm.$message({
+                                        message: msg,
+                                        type: 'error',
+                                        duration: 1200
+                                    });
+                                }
+                            }
+                        }).catch(function (error) {
+                            setTimeout(() => {
+                                vm.alertInfo('请求失败!' + error);
+                            }, 150);
+                        });
+                    }
+                });
+            },
+
+            openDelete(index, row) {
+                this.rowid = row.id;
+                this.delVisible = true;
+            },
+            //删除
+            handledelete() {
+                let vm = this;
+                let api = this.delapi;
+                let qform = this.sform;
+                let dform = {'id': this.rowid, 'token': sessionStorage.getItem('token')};
+                dform = common.generateForm(dform);
+                //发送请求,删除id为row.id的数据
+
+                vm.$axios.post(path + api, vm.$qs.stringify(dform), {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    }
+                }).then(function (response) {
+                    let ret = response.data;
+                    if (ret.validate != 'undefined' && ret.validate == '1') {
+                        //过期.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录过期,请重新登录!');
+                        }, 100);
+                    } else if (ret.validate != 'undefined' && ret.validate == '2') {
+                        //令牌无效.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录异常,请重新登录!');
+                        }, 100);
+                    } else {
+                        console.log(ret);
+                        if (ret > 0 || ret.state == 1) {
+                            // if (ret > 0) {
+                            //删除成功
+                            vm.getTableData(qform);
+                            vm.$message({
+                                message: '删除成功!',
+                                type: 'success',
+                                duration: 600
+                            });
+                            vm.delVisible = false;
+                        } else {
+                            //更新失败
+                            vm.$message({
+                                message: '更新失败' + ret.msg,
+                                type: 'error',
+                                duration: 1200
+                            });
+                        }
+                    }
+                }).catch(function (error) {
+                    setTimeout(() => {
+                        vm.alertInfo('请求失败!' + error);
+                    }, 150);
+                });
+            },
+            alertInfo(msg) {
+                this.$alert(msg, '提示', {
+                    confirmButtonText: '确定',
+                    type: 'warning',
+                    callback: action => {
+                        sessionStorage.removeItem('user');
+                        sessionStorage.removeItem('token');
+                        this.$router.push('/login');
+                    }
+                });
+            },
+            handlemap(index, row) {
+
+                if (row.lat == null || row.lat == 'null') {
+                    row.lat = 39.915797;
+                    row.lng = 116.404119;
+                }
+                this.rowid = row.id;
+                this.label.content = row.name;
+                this.center.lat = row.lat;
+                this.center.lng = row.lng;
+                this.marker.lat = row.lat;
+                this.marker.lng = row.lng;
+                this.showMap = true;
+                this.showMarker = true;
+                this.mapVisible = true;
+                // console.log(this.center.lat, this.center.lng);
+            },
+            handleShowImg(index, row) {
+                // alert(index + '>' + row.id)
+                if (row.liftrod_id == undefined) {
+                    //订单图片
+                    this.$emit('showImg_Order', index, row);
+                } else {
+                    //抬杆图片
+                    this.$emit('showImg_Pole', index, row);
+                }
+            },
+            handleModifyCarNumber(index, row) {
+                //修改车牌号
+                this.$emit('showreset', index, row);
+            },
+            handleRefill(index, row) {
+                //月卡续费
+                // alert('功能正在开发，请耐心等待')
+                this.$emit('showrefill', index, row);
+            },
+            handleCustomizeEdit(index, row) {
+                this.$emit('customizeedit', index, row);
+            },
+            handlePermission(index, row) {
+                //员工权限-角色管理-编辑权限
+                // alert('功能正在开发，请耐心等待')
+                this.$emit('showRolePermission', index, row);
+            },
+            handleresetpwd(index, row) {
+                this.rowid = row.id;
+                this.pwd1 = '';
+                this.pwd2 = '';
+                //显示充值密码对话框
+                this.resetPwdVisible = true;
+            },
+            resetPwd() {
+
+                let qform = this.sform;
+                let vm = this;
+                let api = this.resetapi;
+                if (this.pwd1 == '' || this.pwd2 == '') {
+                    this.$message.error('密码不能为空!');
+                    return;
+                }
+                if (!(/^(\w){6,12}$/.test(this.pwd1)) || !(/^(\w){6,12}$/.test(this.pwd2))) {
+                    this.$message.error('密码为6-12位字母,数字或下划线!');
+                    return;
+                }
+                if (this.pwd1 != this.pwd2) {
+                    this.$message.error('两次输入密码不一致!');
+                    return;
+                }
+                this.resetloading = true;
+                let rform = {
+                    'newpass': this.pwd1,
+                    'confirmpass': this.pwd2,
+                    'id': this.rowid,
+                    'token': sessionStorage.getItem('token')
+                };
+                vm.$axios.post(path + api, vm.$qs.stringify(rform), {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    }
+                }).then(function (response) {
+                    let ret = response.data;
+                    if (ret.validate != 'undefined' && ret.validate == '1') {
+                        //过期.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录过期,请重新登录!');
+                        }, 100);
+                    } else if (ret.validate != 'undefined' && ret.validate == '2') {
+                        //令牌无效.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录异常,请重新登录!');
+                        }, 100);
+                    } else {
+                        if (ret > 0 || ret.state == 1) {
+                            //更新成功
+                            vm.getTableData(qform);
+                            vm.$message({
+                                message: '重置成功!',
+                                type: 'success',
+                                duration: 1500
+                            });
+                            vm.resetPwdVisible = false;
+                            vm.resetloading = false;
+                        } else {
+                            //更新失败
+                            vm.$message({
+                                message: '更新失败!' + ret.msg,
+                                type: 'error',
+                                duration: 2000
+                            });
+                        }
+                    }
+                }).catch(function (error) {
+                    setTimeout(() => {
+                        vm.alertInfo('请求失败!' + error);
+                    }, 150);
+                });
+            },
+            modifyPosition() {
+                let vm = this;
+                let api = this.editapi;
+                let eform = {
+                    'id': this.rowid,
+                    'lng': this.marker.lng,
+                    'lat': this.marker.lat,
+                    'token': sessionStorage.getItem('token')
+                };
+                let qform = this.sform;
+                //发起修改位置
+                vm.maploading = true;
+
+                vm.$axios.post(path + api, vm.$qs.stringify(eform), {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    }
+                }).then(function (response) {
+                    let ret = response.data;
+                    if (ret.validate != 'undefined' && ret.validate == '1') {
+                        //过期.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录过期,请重新登录!');
+                        }, 100);
+                    } else if (ret.validate != 'undefined' && ret.validate == '2') {
+                        //令牌无效.重新登录
+                        setTimeout(() => {
+                            vm.alertInfo('登录异常,请重新登录!');
+                        }, 100);
+                    } else {
+                        if (ret > 0) {
+                            //更新成功
+                            vm.getTableData(qform);
+                            vm.$message({
+                                message: '更新成功!',
+                                type: 'success',
+                                duration: 600
+                            });
+                            vm.mapVisible = false;
+                            vm.maploading = false;
+                        } else {
+                            //更新失败
+                            vm.$message({
+                                message: '更新失败!' + ret.msg,
+                                type: 'error',
+                                duration: 600
+                            });
+                        }
+                    }
+                }).catch(function (error) {
+                    setTimeout(() => {
+                        vm.alertInfo('请求失败!' + error);
+                    }, 150);
+                });
+
+            },
+            makePoint(type) {
+                this.showMarker = false;
+                this.marker.lat = type.point.lat;
+                this.marker.lng = type.point.lng;
+                this.showMarker = true;
+                //console.log(this.marker.lat,this.marker.lng)
+            },
+            mouseup(type) {
+                this.marker.lat = type.point.lat;
+                this.marker.lng = type.point.lng;
+                //console.log(this.marker.lat,this.marker.lng)
+            },
+            clickmap(type) {
+                //console.log(type.point)
+            },
+            sclick() {
+                let vm = this;
+                let myGeo = new BMap.Geocoder();
+
+                myGeo.getPoint(this.keyword, function (point) {
+                    if (point) {
+                        if (point.lat == vm.center.lat && point.lng == vm.center.lng) {
+                            alert('输入的地址相同或地址不正确!');
+                        } else {
+                            vm.center.lat = point.lat;
+                            vm.center.lng = point.lng;
+                            vm.showMarker = false;
+                            vm.label.content = vm.keyword;
+                            vm.marker.lat = point.lat;
+                            vm.marker.lng = point.lng;
+                            vm.showMarker = true;
+                        }
+                    } else {
+                        alert('您选择地址没有解析到结果!');
+                    }
+                }, '中国');
+            },
+            dclose() {
+                // console.log('close')
+                setTimeout(() => {
+                    this.showMarker = false;
+                    this.showMap = false;
+                    this.keyword = '';
+                }, 100);
+            },
+            mapready(map) {
+                alert('map render');
+            },
+            mapSearch() {
+
+            },
+            changeanalysisdatecollect(val) {
+                this.currentcollect = val;
+                this.sform.out_uid =this.currentcollect;
+                this.sform.date =this.currentdate;
+                if (this.currentdate == '') {
+                    this.currentdate = common.currentFormatDate();
+                }
+                let form = {'date': this.currentdate, 'out_uid': val};
+                this.currentPage = 1;
+                this.getTableData(form);
+            },
+            changeanalysisdatepark(val) {
+                this.currentpark = val;
+                this.sform.date = this.searchDate;
+                this.sform.comid_start =this.currentpark;
+                if (this.currentdate == '') {
+                    this.currentdate = common.currentFormatDate();
+                }
+                let form = {'date': this.currentdate, 'comid_start': val};
+                this.currentPage = 1;
+                this.getTableData(form);
+            },
+            changeanalysisdate(input2) {
+                //修改车场统计分析日期
+                console.log(input2);
+                if (input2.length > 0) {
+                    this.sform.comid_start =this.currentpark;
+                    this.sform.out_uid =this.currentcollect;
+                    let input = input2[0] + encodeURI(encodeURI('至')) + input2[1];
+                    this.searchDate = input;
+                    this.sform.date = this.searchDate;
+                    this.currentdate = input;
+                    let date = {'date': input, 'out_uid': this.currentcollect, 'comid_start': this.currentpark};
+                    this.searchDate = input;
+                    this.currentPage = 1;
+                    this.getTableData(date);
+                }
+
+            },
+            
+        },
+        mounted() {
+            //window.onresize=()=>{alert('123');this.mapheight=common.gwh()*0.5}
+            this.mapheight = common.gwh() * 0.5;
+            this.mapstyle = 'width:inherit;height:' + common.gwh() / 2 + 'px';
+            console.log('commontable mount');
+            //拷贝查询表单,用来在重置时清空表单内容
+            this.tempSearchForm = common.clone(this.searchForm);
+
+        },
+
+        activated() {
+            window.onresize = () => {
+                this.tableheight2 = common.gwh() - 143;
+            };
+
+            this.tableheight2 = common.gwh() - 143;
+            //window.onresize=()=>{alert('123');this.mapheight=common.gwh()*0.5}
+            let _this = this;
+            this.analysisdate = Date.now();
+            this.mapheight = common.gwh() * 0.5;
+            this.mapstyle = 'width:inherit;height:' + common.gwh() / 2 + 'px';
+            // console.log('commontable active')
+            this.currentPage = 1;
+            this.sform = {};
+            //this.date_selector ='123434342'
+            if (this.showdateSelector) {
+                _this.start_placeholder = common.currentDate() + ' 00:00:00';
+                _this.end_placeholder = common.currentDate() + ' 23:59:59';
+                _this.currentcollect = '';
+                _this.currentpark = '';
+                _this.currentdate = '';
+                _this.datesselector = '';
+                _this.searchDate = '';
+                _this.$axios.all([common.getCollector(), common.getAllParks()])
+                    .then(_this.$axios.spread(function (ret, retpark) {
+                        _this.collectors = [{value_no: '', value_name: '全部'}];
+                        _this.collectors = _this.collectors.concat(ret.data);
+                        _this.parks = [{value_no: '', value_name: '全部车场'}];
+                        _this.parks = _this.parks.concat(retpark.data);
+                    }));
+            }
+            if (this.showdateSelectorMonth) {
+                _this.monthReportStart = '';
+                _this.monthReportEnd = '';
+                _this.start_month_placeholder = common.currentMonth();
+            }
+        }
+    };
+
+</script>
+
+<style>
+
+    .deleteTip {
+        vertical-align: middle
+    }
+
+    .el-table__fixed {
+        box-shadow: 0 0 0 #fff;
+    }
+
+    .el-input.is-disabled .el-input__inner {
+        background-color: #fff;
+        color: black
+    }
+
+    .el-input-group > .el-input__inner {
+        text-align: center;
+    }
+    /*table表格 表头背景色*/
+    .el-table th{
+        background-color:  #F5F7FA;
+    }
+    .el-table tr{
+        overflow: hidden;
+        text-overflow:ellipsis;
+        white-space: nowrap;
+    }
+</style>

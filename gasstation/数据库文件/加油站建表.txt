@@ -1,0 +1,106 @@
+
+--park_token_tb
+CREATE TABLE park_token_tb
+(
+  id bigint  primary key,
+  park_id character varying,
+  token character varying,
+  login_time bigint,
+  beat_time bigint,
+  server_ip character varying, -- 所在服务器IP
+  source_ip character varying, -- 客户端IP
+  local_id character varying -- 收费终端编号，支持一个车场有多个收费系统登录
+  
+)
+CREATE SEQUENCE  seq_park_token_tb
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+alter table park_token_tb alter column id set default nextval('seq_park_token_tb');
+
+
+
+
+--加油站同步日志
+CREATE TABLE sync_gas_station_tb
+(
+  id bigint primary key,  --主键
+  parked_id character varying, --加油站id
+  device_id character varying, --加油机id
+  info character varying,    --发送消息
+  status integer default 0,   --是否开闸  --开闸 1不开闸
+  time_stamp bigint,  --时间戳
+  send_state integer  default 0, --发送到sdk状态 0发送失败  1发送成功 
+  sdk_state integer  default 0  --sdk处理返回结果  0未处理  1处理成功
+
+);
+CREATE SEQUENCE  seq_sync_gas_station_tb
+    START WITH 1000
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+alter table sync_gas_station_tb alter column id set default nextval('seq_sync_gas_station_tb');
+
+
+--用户信息表
+CREATE TABLE user_info_tb
+(
+  id bigint primary key,--主键
+  username character varying,--用户名称
+  password character varying,--密码
+  nickname character varying,--用户昵称
+  status integer  --状态 0 正常  1删除
+);
+CREATE SEQUENCE  seq_user_info_tb
+    START WITH 1000
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+alter table user_info_tb alter column id set default nextval('seq_user_info_tb');
+
+
+--用户信息表
+CREATE TABLE gas_station_tb
+(
+  id bigint primary key,--主键
+  name character varying,--加油站名称
+  key character varying,--加油站密钥
+  address character varying,--加油站地址
+  device_total integer,--加油机数量
+  phone character varying, --联系电话
+  linkman character varying,--联系人
+  create_time bigint,--创建时间
+  state integer  --状态 0 正常  1删除
+);
+CREATE SEQUENCE  seq_gas_station_tb
+    START WITH 30001
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+alter table gas_station_tb alter column id set default nextval('seq_gas_station_tb');
+
+--用户登陆信息表 token
+CREATE TABLE token_tb
+(
+  id bigint primary key,--主键
+  username character varying,--加油站id
+  token character varying  --登陆保存token信息
+);
+CREATE SEQUENCE  seq_token_tb
+    START WITH 30001
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+alter table token_tb alter column id set default nextval('seq_token_tb');
+

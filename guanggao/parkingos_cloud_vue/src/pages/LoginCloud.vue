@@ -1,0 +1,480 @@
+<template>
+    <div style="width: 100%;height: 100%; display: flex;flex-direction: column;align-items: center;justify-content: center;">
+        <div style="flex: 1;width: 100%;">
+            <div style="font-family: STXinwei;margin-left:10px;font-size:30px;postition:relative;line-height:60px;vertical-align:middle;font-weight:bold">
+                智慧停车云 · 行业领导者
+            </div>
+        </div>
+        <div class="login-container" style="flex: 18;display: flex;align-items: center;justify-content: center">
+
+            <el-form class="login-form" autoComplete="on" :model="loginForm" :rules="rules2" ref="loginForm"
+                     label-position="left">
+                <div class="title-container">
+                    <h3 class="title">管理后台</h3>
+                </div>
+
+                <el-form-item prop="username">
+                    <span class="svg-container svg-container_login"><img src="../assets/user.png"
+                                                                         style="padding-top: 5px;width: 25px;height: 25px;"/></span>
+                    <el-input type="text" v-model="loginForm.username" autoComplete="on" placeholder="账 号"
+                              style="font-size: 16px;"/>
+                </el-form-item>
+
+                <el-form-item prop="password">
+                    <span class="svg-container"><img src="../assets/pwd.png"
+                                                     style="padding-top: 5px;width: 25px;height: 25px;"/></span>
+                    <el-input :type="passwordType" @keyup.enter.native="handleSubmit2"
+                              v-model="loginForm.password" autoComplete="on" placeholder="密 码"
+                              style="font-size: 16px;"/>
+                    <span class="show-pwd" @click="showPwd"><img src="../assets/eye.png"/></span>
+                </el-form-item>
+
+                <el-button type="primary"
+                           style="width:100%;margin-bottom:30px;background: #109EFF;height: 47px;font-size: 16px;"
+                           :loading="loading"
+                           @click.native.prevent="handleSubmit2">登 录
+                </el-button>
+            </el-form>
+        </div>
+        <div style="flex: 1;width: 100%;display: flex;align-items: center;justify-content: center;">
+            © 2017 - 2018 All Rights Reserved
+        </div>
+    </div>
+</template>
+
+<script>
+    import CryptoJS from 'crypto-js';
+    import {path, checkPass} from '../api/api'
+    import MD5 from 'crypto-js/md5'
+    import common from '../common/js/common'
+    import {ROLE_ID,AUTH_ID,AUTH_ID_UNION,showUnionItem_const,showParkItem_const} from '../common/js/const'
+
+    var key = CryptoJS.enc.Utf8.parse("zldboink20170613");
+    var iv = CryptoJS.enc.Utf8.parse('zldboink20170613');
+    var timer;
+
+    // import SvgIcon from '../components/SvgIcon/index.vue'// svg组件
+
+    export default {
+        // components: {svgicon: SvgIcon},
+        data() {
+            return {
+                expandindex: '',   //'/order',//展开的sub_menu
+                highlightindex: '',//'/orderManage_Poles',//高亮的item
+                //根据权限控制页面是否显示
+                showParkItem: showParkItem_const,
+                showUnionItem:showUnionItem_const,
+
+                logining: false,
+                getPassVisible: false,
+                getckeyVisible: false,
+                resetPassVisible: false,
+                codeBtn: false,
+                hasCode: true,
+                passinfo: '获取验证码',
+                top: '',
+                bgheight: '',
+                content: '',
+                form: '',
+                wrap: '',
+                bg: '',
+                // account:'account',
+                // checkPass:'checkPass',
+                rules2: {
+                    username: [
+                        {required: true, message: '请输入账号', trigger: 'blur'},
+                        //{ validator: validaePass }
+                    ],
+                    password: [
+                        {required: true, message: '请输入密码', trigger: 'blur'},
+                        //{ validator: validaePass2 }
+                    ]
+                },
+                checked: false,
+                getpass: {
+                    user_type: '',
+                    userid: '',
+                    mobile: '',
+                    code: ''
+                },
+                getckeyForm: {
+                    ckey: ''
+                },
+                ckey: '',
+                resetPassForm: {
+                    pass1: '',
+                    pass2: ''
+                },
+                token: '',
+                getPassFormRules: {
+                    user_type: [
+                        {required: true, message: '请选择用户类型', trigger: 'change'}
+                    ],
+                    userid: [
+                        {required: true, message: '请输入账户名称', trigger: 'blur'}
+                    ],
+                    mobile: [
+                        {required: true, message: '请输入密保电话', trigger: 'blur'}
+                    ],
+                },
+                resetPassFormRules: {
+                    pass1: [
+                        {validator: checkPass, required: true, trigger: 'blur'}
+                    ],
+                    pass2: [
+                        {validator: checkPass, required: true, trigger: 'blur'}
+                    ],
+                },
+                time: '',
+
+
+                loginForm: {
+                    username: '',
+                    password: ''
+                },
+                passwordType: 'password',
+                loading: false,
+                showDialog: false
+            }
+        },
+        mounted() {
+            //alert(common.gwh())
+            var vm = this
+            var pad = Math.ceil((common.gww() - 1366) / 2)
+            this.top = 'height:60px;padding-left:' + pad + 'px;padding-right:' + pad + 'px'
+            this.bgheight = 'height:' + (common.gwh() - 110) + 'px;width:' + common.gww() + 'px'
+            this.content = 'float:left;width:1250px;height:' + (common.gwh() - 110) + 'px;margin-left:' + Math.ceil((common.gww() - 1500) / 2) + 'px'
+
+            //检测回车按键
+            document.addEventListener("keydown", function (e) {
+                if (e.keyCode == 13) {
+                    vm.handleSubmit2()
+                }
+            }, false)
+        },
+        methods: {
+            showPwd() {
+                if (this.passwordType === 'password') {
+                    this.passwordType = ''
+                } else {
+                    this.passwordType = 'password'
+                }
+            },
+            handleReset() {
+                // console.log('忘记密码')
+                this.getPassVisible = true
+            },
+            closegetckey() {
+                this.getckeyForm.ckey = ''
+            },
+            closeGetPass() {
+                this.getpass.code = ''
+                window.clearInterval(timer)
+                this.codeBtn = false
+                this.passinfo = '获取验证码'
+                this.$refs['passform'].resetFields()
+            },
+            closeResetPass() {
+                this.resetPassForm.pass1 = ''
+                this.resetPassForm.pass2 = ''
+            },
+            getckey() {
+                var vm = this
+                var cform = this.getpass
+                this.$refs.passform.validate((valid) => {
+                    if (valid) {
+                        vm.$.post(path + '/user/getckey', cform, function (ret) {
+                            if (ret.state == 1) {
+                                vm.ckey = CryptoJS.AES.decrypt(ret.ckey, key, {
+                                    iv: iv,
+                                    mode: CryptoJS.mode.CBC
+                                }).toString(CryptoJS.enc.Utf8)
+                                vm.getckeyVisible = true
+                            } else {
+                                //更新失败
+                                vm.$message({
+                                    message: ret.errmsg,
+                                    type: 'error',
+                                    duration: 4000
+                                });
+                            }
+                        }, "json")
+                    }
+                })
+
+            },
+            reguser() {
+                var vm = this
+                if (this.getckeyForm.ckey.length != 4) {
+                    vm.$message({
+                        message: "请输入正确的验证码",
+                        type: 'error',
+                        duration: 2000
+                    });
+                    return
+                }
+                var vm = this
+                var win = window
+                var cform = {'mobile': this.getpass.mobile, 'ckey': this.getckeyForm.ckey}
+                vm.$.post(path + '/user/reguser', cform, function (ret) {
+                    if (ret.state == 1) {
+                        vm.$message({
+                            message: "验证码已发送,请注意查收",
+                            type: 'success',
+                            duration: 1500
+                        });
+                        vm.getckeyVisible = false
+                        vm.hasCode = false
+                        //验证码发送成功
+                        vm.time = 60
+                        vm.codeBtn = true
+                        timer = win.setInterval(vm.getCodeBtn, 1000)
+                    } else {
+                        //更新失败
+                        vm.$message({
+                            message: ret.errmsg,
+                            type: 'error',
+                            duration: 4000
+                        });
+                    }
+                }, "json")
+            },
+            getCodeBtn() {
+                if (this.time > 0) {
+                    this.time -= 1
+                    this.passinfo = this.time + '秒后重发'
+                }
+                if (this.time == 0) {
+                    this.codeBtn = false
+                    this.passinfo = '获取验证码'
+                }
+
+            },
+            checkCode() {
+                var vm = this
+                if (this.getpass.code.length != 4) {
+                    vm.$message({
+                        message: "请输入正确的验证码",
+                        type: 'error',
+                        duration: 2000
+                    });
+                    return
+                }
+                var cform = {'mobile': this.getpass.mobile, 'userid': this.getpass.userid, 'code': this.getpass.code}
+                vm.$.post(path + '/user/checkcode', cform, function (ret) {
+                    if (ret.state == 1) {
+                        vm.token = ret.token
+                        //关闭当前对话框
+                        vm.getPassVisible = false
+                        //开启充值密码对话框
+                        vm.resetPassVisible = true
+                    } else {
+                        //更新失败
+                        vm.$message({
+                            message: ret.errmsg,
+                            type: 'error',
+                            duration: 4000
+                        });
+                    }
+                }, "json")
+
+            },
+            resetPasss() {
+                //重置密码
+                var vm = this
+                if (this.resetPassForm.pass1 != this.resetPassForm.pass2) {
+                    vm.$message({
+                        message: "两次输入密码不同",
+                        type: 'error',
+                        duration: 2000
+                    });
+                    return
+                }
+                var cform = {'passwd': this.resetPassForm.pass1, 'token': this.token}
+                this.$refs.resetpassform.validate((valid) => {
+                    if (valid) {
+                        vm.$.post(path + '/user/resetpwd', cform, function (ret) {
+                            if (ret.state == 1) {
+                                vm.$message({
+                                    message: "密码重置成功!",
+                                    type: 'success',
+                                    duration: 1500
+                                });
+                                vm.resetPassVisible = false
+                            } else {
+                                //更新失败
+                                vm.$message({
+                                    message: "密码重置失败!",
+                                    type: 'error',
+                                    duration: 3000
+                                });
+                            }
+                        }, "json")
+                    }
+                })
+            },
+            onSubmit() {
+                this.handleSubmit2()
+                // this.logining = true;
+                // sessionStorage.setItem('user', '{}');
+                // sessionStorage.setItem('token', '')
+                // this.$router.push({path: '/orderManage_Orders'});
+                // this.$router.push({path: '/monthMember_Refill'});
+            },
+            handleSubmit2: function () {
+                var _this = this;
+                var pwd = CryptoJS.AES.encrypt(this.loginForm.password, key, {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC
+                }).toString()
+                // console.log(pwd)
+                this.$refs.loginForm.validate((valid) => {
+                    if (valid) {
+                        this.logining = true;
+                        var _this = this;
+                        var loginParams = {'username': this.loginForm.username, 'password': pwd}
+
+                        _this.$axios.post(path + "/user/dologin", _this.$qs.stringify(loginParams), {
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            }
+                        }).then(function (response) {
+                            // console.log(response)
+                            let ret = response.data;
+                            if (ret.state) {
+                                var u = ret.user;
+                                
+                                sessionStorage.setItem('user', JSON.stringify(u));
+                                sessionStorage.setItem('token', ret.token)
+                                sessionStorage.setItem('comid', u.id)
+                                sessionStorage.setItem('groupid', u.groupid)
+                                sessionStorage.setItem('channelid', u.channelid)
+                                sessionStorage.setItem('unionid', u.unionid)
+                                sessionStorage.setItem('cityid', u.cityid)
+                                sessionStorage.setItem('loginuin', u.loginuin)
+                                sessionStorage.setItem('oid', u.oid)
+                                sessionStorage.setItem('nickname', u.nickname)
+                                sessionStorage.setItem('ishdorder', u.ishdorder)
+                                sessionStorage.setItem('loginroleid', u.loginroleid)
+                                
+                                
+                                if(u.strid=="admin"){
+                                	
+                                	_this.$router.push({path: '/Shop_Message'});
+                                }else{
+                                	_this.$router.push({path: '/Advertiser_Message'});
+                                }
+                                                             							
+                               
+                            } else {
+                                _this.logining = false;
+                                _this.$message.error(ret.msg);
+                            }
+                        }).catch(function (error) {
+                            // setTimeout(() => {
+                            //     _this.alertInfo('请求失败!'+error)
+                            // }, 150)
+                            _this.$message.error(error.data);
+                        })
+                    }
+                })
+            }
+        }
+    }
+</script>
+<style rel="stylesheet/scss" lang="scss">
+    $bg: #2d3a4b;
+    $light_gray: #eee;
+
+    /* reset element-ui css */
+    .login-container {
+        .el-input {
+            display: inline-block;
+            height: 47px;
+            width: 75%;
+            input {
+                background: $bg;
+                border: 0px;
+                -webkit-appearance: none;
+                border-radius: 0px;
+                padding: 12px 5px 12px 20px;
+                color: $light_gray;
+                height: 47px;
+                &:-webkit-autofill {
+                    -webkit-box-shadow: 0 0 0px 1000px $bg inset !important;
+                    -webkit-text-fill-color: #fff !important;
+                }
+            }
+        }
+        .el-form-item {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+
+            color: $bg;
+            background-color: $bg;
+        }
+    }
+</style>
+<style rel="stylesheet/scss" lang="scss">
+    @import "../styles/mixin.scss";
+
+    $bg: #2d3a4b;
+    $dark_gray: #889aa4;
+    $light_gray: #eee;
+
+    .login-container {
+        @include relative;
+        height: 100vh;
+        background-color: $bg;
+        .login-form {
+
+            left: 0;
+            right: 0;
+            width: 450px;
+
+            padding-bottom: 100px;
+        }
+        .tips {
+            font-size: 14px;
+            color: #fff;
+            margin-bottom: 10px;
+            span {
+                &:first-of-type {
+                    margin-right: 16px;
+                }
+            }
+        }
+        .svg-container {
+            padding: 0px 0px 0px 15px;
+            color: $dark_gray;
+            vertical-align: middle;
+            width: 30px;
+            display: inline-block;
+            &_login {
+                font-size: 20px;
+            }
+        }
+        .title-container {
+            position: relative;
+            .title {
+                font-size: 26px;
+                font-weight: 400;
+                color: $light_gray;
+                margin: 0px auto 40px auto;
+                text-align: center;
+                font-weight: bold;
+            }
+        }
+        .show-pwd {
+            position: absolute;
+            right: 10px;
+            top: 7px;
+            font-size: 16px;
+            color: $dark_gray;
+            cursor: pointer;
+            user-select: none;
+        }
+
+    }
+</style>

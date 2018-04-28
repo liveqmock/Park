@@ -1,0 +1,38 @@
+
+--advertisement_tb
+CREATE SEQUENCE  seq_advertisement_tb
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+CREATE TABLE advertisement_tb
+(
+  id bigint  primary key, --主键
+  advertiser_id bigint,  --广告商编号
+  description character varying,--广告描述，对应广告位显示内容
+  redirect_url character varying,--点击图片跳转url
+  path character varying, --广告图片在服务器的地址
+  state integer --状态  0为正常  1为下架
+);
+
+
+alter table advertisement_tb alter column id set default nextval('seq_advertisement_tb');
+
+
+--停车场与广告商绑定id
+--park_advertiser_tb
+
+CREATE TABLE park_advertiser_tb
+(
+  id bigint  primary key, --主键
+  advertiser_id bigint,  --广告商编号
+  park_id bigint --状态  0为正常  1为下架
+);
+CREATE SEQUENCE  seq_park_advertiser_tb
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+alter table park_advertiser_tb alter column id set default nextval('seq_park_advertiser_tb');
